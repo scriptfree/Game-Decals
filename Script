@@ -1,0 +1,27 @@
+local imageList = {}
+
+-- Step 1: Collect all Image IDs from UI elements
+for _, obj in ipairs(game:GetDescendants()) do
+    if (obj:IsA("ImageLabel") or obj:IsA("ImageButton")) and obj.Image then
+        table.insert(imageList, obj.Image)
+    end
+end
+
+-- Step 2: Remove duplicates (keep only first occurrence)
+local seen = {}
+local cleanedList = {}
+
+for _, id in ipairs(imageList) do
+    if not seen[id] then
+        table.insert(cleanedList, id)
+        seen[id] = true
+    end
+end
+
+-- Step 3: Copy to clipboard
+if setclipboard then
+    setclipboard(table.concat(cleanedList, "\n"))
+    print("✅ Copied " .. #cleanedList .. " unique UI image IDs to clipboard!")
+else
+    warn("❌ setclipboard() is not available.")
+end
