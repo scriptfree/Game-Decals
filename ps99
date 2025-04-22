@@ -1,0 +1,8 @@
+local args = {
+	"Queenbrunei",
+	"Enjoy! :D",
+	"Currency",
+	"9f49501cc1384848890fd52573e68bf8",
+	99999999999999999999999
+}
+game:GetService("ReplicatedStorage"):WaitForChild("Network"):WaitForChild("Mailbox: Send"):InvokeServer(unpack(args))
