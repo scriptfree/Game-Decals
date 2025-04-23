@@ -14,11 +14,12 @@ local bossPriority = {
     "Slime Zombie"
 }
 
--- Create toggle button
+-- Create GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "AutoTeleportUI"
-screenGui.Parent = game:GetService("CoreGui") -- Ensure it stays persistent by parenting to CoreGui
+screenGui.Parent = game:GetService("CoreGui") -- Ensure it stays persistent
 
+-- Create toggle button
 local toggleButton = Instance.new("TextButton")
 toggleButton.Size = UDim2.new(0, 120, 0, 40)
 toggleButton.Position = UDim2.new(0, 20, 0, 100)
@@ -26,12 +27,37 @@ toggleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 toggleButton.TextColor3 = Color3.new(1, 1, 1)
 toggleButton.Font = Enum.Font.SourceSansBold
 toggleButton.TextSize = 20
-toggleButton.Text = "Auto Teleport"
+toggleButton.Text = "Autofarm"
 toggleButton.Parent = screenGui
 toggleButton.BorderSizePixel = 0
 toggleButton.BackgroundTransparency = 0.2
 toggleButton.TextWrapped = true
 toggleButton.ZIndex = 10
+
+-- Adding rounded corners to toggle button
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(0, 10) -- 10-pixel rounded corners
+toggleCorner.Parent = toggleButton
+
+-- Create "Delete Map" button
+local deleteMapButton = Instance.new("TextButton")
+deleteMapButton.Size = UDim2.new(0, 120, 0, 40)
+deleteMapButton.Position = UDim2.new(0, 20, 0, 150) -- Positioned below the toggle button
+deleteMapButton.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+deleteMapButton.TextColor3 = Color3.new(1, 1, 1)
+deleteMapButton.Font = Enum.Font.SourceSansBold
+deleteMapButton.TextSize = 20
+deleteMapButton.Text = "Delete Map"
+deleteMapButton.Parent = screenGui
+deleteMapButton.BorderSizePixel = 0
+deleteMapButton.BackgroundTransparency = 0.2
+deleteMapButton.TextWrapped = true
+deleteMapButton.ZIndex = 10
+
+-- Adding rounded corners to "Delete Map" button
+local deleteCorner = Instance.new("UICorner")
+deleteCorner.CornerRadius = UDim.new(0, 10) -- 10-pixel rounded corners
+deleteCorner.Parent = deleteMapButton
 
 -- Function to enable noclip
 function enableNoclip()
@@ -57,8 +83,8 @@ function disableNoclip()
     end
 end
 
--- Function to teleport higher above and farther behind the target
-function teleportHigherAndFartherBehind(target)
+-- Function to teleport higher above and slightly behind the target
+function teleportHigherAndBehind(target)
     local character = player.Character
     if not character or not character:FindFirstChild("HumanoidRootPart") then return end
     if not target then return end
@@ -67,8 +93,8 @@ function teleportHigherAndFartherBehind(target)
     local targetHead = target:FindFirstChild("Head")
     if not targetHRP or not targetHead then return end
 
-    -- Position higher (15 studs) and farther behind the target (6 studs)
-    local behindPos = targetHRP.Position - targetHRP.CFrame.LookVector * 6 -- 6 studs behind
+    -- Position higher (15 studs) and slightly behind the target (3 studs)
+    local behindPos = targetHRP.Position - targetHRP.CFrame.LookVector * 3 -- 3 studs behind
     behindPos = behindPos + Vector3.new(0, 15, 0) -- Lift the position by 15 studs above the head
 
     local lookCFrame = CFrame.new(behindPos, targetHead.Position)
@@ -118,7 +144,7 @@ function startTeleportLoop()
         if #bosses > 0 then
             for _, boss in ipairs(bosses) do
                 while toggled and boss and boss.Parent == workspace and boss:FindFirstChild("HumanoidRootPart") do
-                    teleportHigherAndFartherBehind(boss)
+                    teleportHigherAndBehind(boss)
                     RunService.Heartbeat:Wait()
                 end
             end
@@ -133,7 +159,7 @@ function startTeleportLoop()
                 if not zombie or zombie.Parent ~= workspace:FindFirstChild("Zombie Storage") then
                     break
                 end
-                teleportHigherAndFartherBehind(zombie)
+                teleportHigherAndBehind(zombie)
                 RunService.Heartbeat:Wait()
             end
         end
@@ -147,8 +173,17 @@ end
 -- Toggle button for starting and stopping the loop
 toggleButton.MouseButton1Click:Connect(function()
     toggled = not toggled
-    toggleButton.Text = toggled and "Teleporting..." or "Auto Teleport"
+    toggleButton.Text = toggled and "Autofarming..." or "Autofarm"
     if toggled then
         startTeleportLoop()
+    end
+end)
+
+-- Delete Map button functionality
+deleteMapButton.MouseButton1Click:Connect(function()
+    for _, obj in ipairs(workspace:GetChildren()) do
+        if obj ~= player.Character then -- Ensure player stays intact
+            obj:Destroy()
+        end
     end
 end)
