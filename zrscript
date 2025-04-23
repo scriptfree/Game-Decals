@@ -9,7 +9,7 @@ local tracking = false
 
 -- Correct Boss priority list
 local bossPriority = {
-    "King Zombie",
+    "Zombie King", -- Changed from "King Zombie"
     "Super Phantom",
     "Slime Zombie"
 }
@@ -181,8 +181,9 @@ end)
 
 -- Delete Map button functionality
 deleteMapButton.MouseButton1Click:Connect(function()
-    for _, obj in ipairs(workspace:GetChildren()) do
-        if obj ~= player.Character then -- Ensure player stays intact
+    local mapStorage = workspace:FindFirstChild("Map Storage")
+    if mapStorage then
+        for _, obj in ipairs(mapStorage:GetChildren()) do
             obj:Destroy()
         end
     end
