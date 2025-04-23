@@ -1,5 +1,3 @@
---MUAHAHAHAHAHAHAHAHAHAHAHHAH
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
@@ -59,8 +57,8 @@ function disableNoclip()
     end
 end
 
--- Function to teleport higher above and slightly behind the target
-function teleportHigherAndBehind(target)
+-- Function to teleport higher above and farther behind the target
+function teleportHigherAndFartherBehind(target)
     local character = player.Character
     if not character or not character:FindFirstChild("HumanoidRootPart") then return end
     if not target then return end
@@ -69,8 +67,8 @@ function teleportHigherAndBehind(target)
     local targetHead = target:FindFirstChild("Head")
     if not targetHRP or not targetHead then return end
 
-    -- Position higher (15 studs) and slightly behind the target
-    local behindPos = targetHRP.Position - targetHRP.CFrame.LookVector * 3 -- 3 studs behind
+    -- Position higher (15 studs) and farther behind the target (6 studs)
+    local behindPos = targetHRP.Position - targetHRP.CFrame.LookVector * 6 -- 6 studs behind
     behindPos = behindPos + Vector3.new(0, 15, 0) -- Lift the position by 15 studs above the head
 
     local lookCFrame = CFrame.new(behindPos, targetHead.Position)
@@ -120,7 +118,7 @@ function startTeleportLoop()
         if #bosses > 0 then
             for _, boss in ipairs(bosses) do
                 while toggled and boss and boss.Parent == workspace and boss:FindFirstChild("HumanoidRootPart") do
-                    teleportHigherAndBehind(boss)
+                    teleportHigherAndFartherBehind(boss)
                     RunService.Heartbeat:Wait()
                 end
             end
@@ -135,7 +133,7 @@ function startTeleportLoop()
                 if not zombie or zombie.Parent ~= workspace:FindFirstChild("Zombie Storage") then
                     break
                 end
-                teleportHigherAndBehind(zombie)
+                teleportHigherAndFartherBehind(zombie)
                 RunService.Heartbeat:Wait()
             end
         end
