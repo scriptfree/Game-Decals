@@ -1,1 +1,156 @@
+--MUAHAHAHAHAHAHAHAHAHAHAHHAH
 
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+local camera = Workspace.CurrentCamera
+local toggled = false
+local tracking = false
+
+-- Correct Boss priority list
+local bossPriority = {
+    "King Zombie",
+    "Super Phantom",
+    "Slime Zombie"
+}
+
+-- Create toggle button
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AutoTeleportUI"
+screenGui.Parent = game:GetService("CoreGui") -- Ensure it stays persistent by parenting to CoreGui
+
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0, 120, 0, 40)
+toggleButton.Position = UDim2.new(0, 20, 0, 100)
+toggleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+toggleButton.TextColor3 = Color3.new(1, 1, 1)
+toggleButton.Font = Enum.Font.SourceSansBold
+toggleButton.TextSize = 20
+toggleButton.Text = "Auto Teleport"
+toggleButton.Parent = screenGui
+toggleButton.BorderSizePixel = 0
+toggleButton.BackgroundTransparency = 0.2
+toggleButton.TextWrapped = true
+toggleButton.ZIndex = 10
+
+-- Function to enable noclip
+function enableNoclip()
+    local character = player.Character
+    if character then
+        for _, part in ipairs(character:GetChildren()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false -- Disables collisions
+            end
+        end
+    end
+end
+
+-- Function to disable noclip
+function disableNoclip()
+    local character = player.Character
+    if character then
+        for _, part in ipairs(character:GetChildren()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true -- Enables collisions
+            end
+        end
+    end
+end
+
+-- Function to teleport higher above and slightly behind the target
+function teleportHigherAndBehind(target)
+    local character = player.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+    if not target then return end
+
+    local targetHRP = target:FindFirstChild("HumanoidRootPart")
+    local targetHead = target:FindFirstChild("Head")
+    if not targetHRP or not targetHead then return end
+
+    -- Position higher (15 studs) and slightly behind the target
+    local behindPos = targetHRP.Position - targetHRP.CFrame.LookVector * 3 -- 3 studs behind
+    behindPos = behindPos + Vector3.new(0, 15, 0) -- Lift the position by 15 studs above the head
+
+    local lookCFrame = CFrame.new(behindPos, targetHead.Position)
+
+    -- Teleport to the adjusted position and set the camera angle
+    character.HumanoidRootPart.CFrame = lookCFrame
+    camera.CFrame = CFrame.new(camera.CFrame.Position, targetHead.Position) -- Focus on the target's head
+end
+
+-- Function to get alive bosses
+function getAliveBosses()
+    local bosses = {}
+    for _, bossName in ipairs(bossPriority) do
+        for _, obj in ipairs(workspace:GetDescendants()) do -- Search entire workspace
+            if obj.Name == bossName and obj:FindFirstChild("HumanoidRootPart") then
+                table.insert(bosses, obj)
+            end
+        end
+    end
+    return bosses
+end
+
+-- Function to get the next zombie
+function getNextZombie()
+    local zombiesFolder = workspace:FindFirstChild("Zombie Storage")
+    if zombiesFolder then
+        local zombies = zombiesFolder:GetChildren()
+        for _, z in ipairs(zombies) do
+            if z:IsA("Model") and z:FindFirstChild("HumanoidRootPart") then
+                return z
+            end
+        end
+    end
+    return nil
+end
+
+-- Start teleport loop
+function startTeleportLoop()
+    if tracking then return end
+    tracking = true
+
+    enableNoclip() -- Enable noclip
+
+    while toggled do
+        -- Prioritize bosses
+        local bosses = getAliveBosses()
+        if #bosses > 0 then
+            for _, boss in ipairs(bosses) do
+                while toggled and boss and boss.Parent == workspace and boss:FindFirstChild("HumanoidRootPart") do
+                    teleportHigherAndBehind(boss)
+                    RunService.Heartbeat:Wait()
+                end
+            end
+        else
+            -- No bosses, handle normal zombies
+            local zombie = getNextZombie()
+            while toggled do
+                local currentBosses = getAliveBosses()
+                if #currentBosses > 0 then
+                    break -- Interrupt zombie loop to handle bosses
+                end
+                if not zombie or zombie.Parent ~= workspace:FindFirstChild("Zombie Storage") then
+                    break
+                end
+                teleportHigherAndBehind(zombie)
+                RunService.Heartbeat:Wait()
+            end
+        end
+        task.wait(0.05)
+    end
+
+    tracking = false
+    disableNoclip() -- Disable noclip when done
+end
+
+-- Toggle button for starting and stopping the loop
+toggleButton.MouseButton1Click:Connect(function()
+    toggled = not toggled
+    toggleButton.Text = toggled and "Teleporting..." or "Auto Teleport"
+    if toggled then
+        startTeleportLoop()
+    end
+end)
