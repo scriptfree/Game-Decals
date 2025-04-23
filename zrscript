@@ -6,20 +6,18 @@ local player = Players.LocalPlayer
 local camera = Workspace.CurrentCamera
 local toggled = false
 local tracking = false
+local antiAfkEnabled = false
 
--- Correct Boss priority list
 local bossPriority = {
-    "Zombie King", -- Changed from "King Zombie"
+    "Zombie King",
     "Super Phantom",
     "Slime Zombie"
 }
 
--- Create GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "AutoTeleportUI"
-screenGui.Parent = game:GetService("CoreGui") -- Ensure it stays persistent
+screenGui.Parent = game:GetService("CoreGui")
 
--- Create toggle button
 local toggleButton = Instance.new("TextButton")
 toggleButton.Size = UDim2.new(0, 120, 0, 40)
 toggleButton.Position = UDim2.new(0, 20, 0, 100)
@@ -34,15 +32,31 @@ toggleButton.BackgroundTransparency = 0.2
 toggleButton.TextWrapped = true
 toggleButton.ZIndex = 10
 
--- Adding rounded corners to toggle button
 local toggleCorner = Instance.new("UICorner")
-toggleCorner.CornerRadius = UDim.new(0, 10) -- 10-pixel rounded corners
+toggleCorner.CornerRadius = UDim.new(0, 10)
 toggleCorner.Parent = toggleButton
 
--- Create "Delete Map" button
+local antiAfkButton = Instance.new("TextButton")
+antiAfkButton.Size = UDim2.new(0, 120, 0, 40)
+antiAfkButton.Position = UDim2.new(0, 20, 0, 150)
+antiAfkButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+antiAfkButton.TextColor3 = Color3.new(1, 1, 1)
+antiAfkButton.Font = Enum.Font.SourceSansBold
+antiAfkButton.TextSize = 20
+antiAfkButton.Text = "Anti AFK"
+antiAfkButton.Parent = screenGui
+antiAfkButton.BorderSizePixel = 0
+antiAfkButton.BackgroundTransparency = 0.2
+antiAfkButton.TextWrapped = true
+antiAfkButton.ZIndex = 10
+
+local antiAfkCorner = Instance.new("UICorner")
+antiAfkCorner.CornerRadius = UDim.new(0, 10)
+antiAfkCorner.Parent = antiAfkButton
+
 local deleteMapButton = Instance.new("TextButton")
 deleteMapButton.Size = UDim2.new(0, 120, 0, 40)
-deleteMapButton.Position = UDim2.new(0, 20, 0, 150) -- Positioned below the toggle button
+deleteMapButton.Position = UDim2.new(0, 20, 0, 200)
 deleteMapButton.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
 deleteMapButton.TextColor3 = Color3.new(1, 1, 1)
 deleteMapButton.Font = Enum.Font.SourceSansBold
@@ -54,37 +68,52 @@ deleteMapButton.BackgroundTransparency = 0.2
 deleteMapButton.TextWrapped = true
 deleteMapButton.ZIndex = 10
 
--- Adding rounded corners to "Delete Map" button
 local deleteCorner = Instance.new("UICorner")
-deleteCorner.CornerRadius = UDim.new(0, 10) -- 10-pixel rounded corners
+deleteCorner.CornerRadius = UDim.new(0, 10)
 deleteCorner.Parent = deleteMapButton
 
--- Function to enable noclip
 function enableNoclip()
     local character = player.Character
     if character then
         for _, part in ipairs(character:GetChildren()) do
             if part:IsA("BasePart") then
-                part.CanCollide = false -- Disables collisions
+                part.CanCollide = false
             end
         end
     end
 end
 
--- Function to disable noclip
 function disableNoclip()
     local character = player.Character
     if character then
         for _, part in ipairs(character:GetChildren()) do
             if part:IsA("BasePart") then
-                part.CanCollide = true -- Enables collisions
+                part.CanCollide = true
             end
         end
     end
 end
 
--- Function to teleport higher above and slightly behind the target
-function teleportHigherAndBehind(target)
+function autoEquipFirstTool()
+    local backpack = player:FindFirstChild("Backpack")
+    if backpack then
+        local firstTool = backpack:FindFirstChildOfClass("Tool")
+        if firstTool then
+            player.Character.Humanoid:EquipTool(firstTool)
+        end
+    end
+end
+
+function disableAnimations()
+    local humanoid = player.Character:FindFirstChild("Humanoid")
+    if humanoid then
+        for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
+            track:Stop()
+        end
+    end
+end
+
+function teleportBehindAndAbove(target)
     local character = player.Character
     if not character or not character:FindFirstChild("HumanoidRootPart") then return end
     if not target then return end
@@ -93,22 +122,18 @@ function teleportHigherAndBehind(target)
     local targetHead = target:FindFirstChild("Head")
     if not targetHRP or not targetHead then return end
 
-    -- Position higher (15 studs) and slightly behind the target (3 studs)
-    local behindPos = targetHRP.Position - targetHRP.CFrame.LookVector * 3 -- 3 studs behind
-    behindPos = behindPos + Vector3.new(0, 15, 0) -- Lift the position by 15 studs above the head
+    local behindPos = targetHRP.Position - targetHRP.CFrame.LookVector * 5
+    behindPos = behindPos + Vector3.new(0, 10, 0)
 
     local lookCFrame = CFrame.new(behindPos, targetHead.Position)
-
-    -- Teleport to the adjusted position and set the camera angle
     character.HumanoidRootPart.CFrame = lookCFrame
-    camera.CFrame = CFrame.new(camera.CFrame.Position, targetHead.Position) -- Focus on the target's head
+    camera.CFrame = CFrame.new(camera.CFrame.Position, targetHead.Position)
 end
 
--- Function to get alive bosses
 function getAliveBosses()
     local bosses = {}
     for _, bossName in ipairs(bossPriority) do
-        for _, obj in ipairs(workspace:GetDescendants()) do -- Search entire workspace
+        for _, obj in ipairs(workspace:GetDescendants()) do
             if obj.Name == bossName and obj:FindFirstChild("HumanoidRootPart") then
                 table.insert(bosses, obj)
             end
@@ -117,7 +142,6 @@ function getAliveBosses()
     return bosses
 end
 
--- Function to get the next zombie
 function getNextZombie()
     local zombiesFolder = workspace:FindFirstChild("Zombie Storage")
     if zombiesFolder then
@@ -131,35 +155,34 @@ function getNextZombie()
     return nil
 end
 
--- Start teleport loop
 function startTeleportLoop()
     if tracking then return end
     tracking = true
 
-    enableNoclip() -- Enable noclip
+    enableNoclip()
+    autoEquipFirstTool()
+    disableAnimations()
 
     while toggled do
-        -- Prioritize bosses
         local bosses = getAliveBosses()
         if #bosses > 0 then
             for _, boss in ipairs(bosses) do
                 while toggled and boss and boss.Parent == workspace and boss:FindFirstChild("HumanoidRootPart") do
-                    teleportHigherAndBehind(boss)
+                    teleportBehindAndAbove(boss)
                     RunService.Heartbeat:Wait()
                 end
             end
         else
-            -- No bosses, handle normal zombies
             local zombie = getNextZombie()
             while toggled do
                 local currentBosses = getAliveBosses()
                 if #currentBosses > 0 then
-                    break -- Interrupt zombie loop to handle bosses
+                    break
                 end
                 if not zombie or zombie.Parent ~= workspace:FindFirstChild("Zombie Storage") then
                     break
                 end
-                teleportHigherAndBehind(zombie)
+                teleportBehindAndAbove(zombie)
                 RunService.Heartbeat:Wait()
             end
         end
@@ -167,10 +190,9 @@ function startTeleportLoop()
     end
 
     tracking = false
-    disableNoclip() -- Disable noclip when done
+    disableNoclip()
 end
 
--- Toggle button for starting and stopping the loop
 toggleButton.MouseButton1Click:Connect(function()
     toggled = not toggled
     toggleButton.Text = toggled and "Autofarming..." or "Autofarm"
@@ -179,12 +201,25 @@ toggleButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- Delete Map button functionality
 deleteMapButton.MouseButton1Click:Connect(function()
     local mapStorage = workspace:FindFirstChild("Map Storage")
     if mapStorage then
         for _, obj in ipairs(mapStorage:GetChildren()) do
             obj:Destroy()
         end
+    end
+end)
+
+antiAfkButton.MouseButton1Click:Connect(function()
+    if not antiAfkEnabled then
+        antiAfkEnabled = true
+        game:GetService("Players").LocalPlayer.Idled:Connect(function()
+            game:GetService("VirtualUser"):CaptureController()
+            game:GetService("VirtualUser"):ClickButton2(Vector2.new(0, 0))
+        end)
+        antiAfkButton.Text = "Anti AFK: ON"
+    else
+        antiAfkEnabled = false
+        antiAfkButton.Text = "Anti AFK"
     end
 end)
